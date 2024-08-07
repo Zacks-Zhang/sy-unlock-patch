@@ -1,31 +1,20 @@
-From 8e3edf70c7d19583ee21e946cdc2bb54faa6b9be Mon Sep 17 00:00:00 2001
+From af52f560a72642901a1052ec05d6eeda9c69807d Mon Sep 17 00:00:00 2001
 From: zhangchanggong <zhangchanggong@qiyuanlab.com>
-Date: Wed, 7 Aug 2024 11:36:42 +0800
+Date: Wed, 7 Aug 2024 12:57:08 +0800
 Subject: [PATCH] unlock
 
 ---
- app/electron/main.js             |  8 ---
- app/src/block/popover.ts         |  2 +-
+ app/electron/main.js             |  8 ----
  app/src/config/about.ts          |  6 +--
  app/src/config/index.ts          |  2 +-
- app/src/layout/tabUtil.ts        |  4 +-
  app/src/mobile/menu/index.ts     |  1 -
  app/src/mobile/settings/about.ts |  6 +--
- app/src/protyle/util/paste.ts    | 13 -----
  app/src/sync/syncGuide.ts        |  6 +++
- app/src/util/needSubscribe.ts    | 21 ++------
- kernel/api/repo.go               |  7 +--
- kernel/api/router.go             |  2 +-
- kernel/api/system.go             | 21 ++++----
- kernel/filesys/json_parser.go    |  7 ---
- kernel/model/blockinfo.go        |  2 +-
- kernel/model/conf.go             | 17 +++---
- kernel/model/file.go             | 28 ++++------
- kernel/model/transaction.go      | 89 ++++++++++++++------------------
- kernel/model/updater.go          | 63 +---------------------
- kernel/sql/block.go              |  3 ++
- kernel/sql/queue.go              | 12 ++---
- 21 files changed, 99 insertions(+), 221 deletions(-)
+ app/src/util/needSubscribe.ts    | 21 ++---------
+ kernel/api/system.go             | 21 ++++++-----
+ kernel/model/conf.go             | 17 ++++-----
+ kernel/model/updater.go          | 63 +-------------------------------
+ 10 files changed, 37 insertions(+), 114 deletions(-)
 
 diff --git a/app/electron/main.js b/app/electron/main.js
 index 29b66abe9..01823f4ac 100644
@@ -46,19 +35,6 @@ index 29b66abe9..01823f4ac 100644
          }, {
              label: lang.resetWindow, type: "checkbox", click: v => {
                  resetWindowStateOnRestart = v.checked;
-diff --git a/app/src/block/popover.ts b/app/src/block/popover.ts
-index 1d973de7b..b0b86ba37 100644
---- a/app/src/block/popover.ts
-+++ b/app/src/block/popover.ts
-@@ -65,7 +65,7 @@ export const initBlockPopover = (app: App) => {
-                                 assetTip += "<br>" + title;
-                             }
-                         } else {
--                            assetTip += ` ${response.data.hSize}${title ? "<br>" + title : ""}<br>${window.siyuan.languages.modifiedAt} ${response.data.hUpdated}<br>${window.siyuan.languages.createdAt} ${response.data.hCreated}`;
-+                            assetTip += ` ${response.data.hSize}${title ? "<br>" + title : ""}<br>${window.siyuan.languages.modifiedAt} ${response.data.hCreated}<br>${window.siyuan.languages.createdAt} ${response.data.hUpdated}`;
-                         }
-                         showTooltip(assetTip, aElement);
-                     });
 diff --git a/app/src/config/about.ts b/app/src/config/about.ts
 index 0da63cf2e..bdcf6a03f 100644
 --- a/app/src/config/about.ts
@@ -96,21 +72,6 @@ index 4c246f6ef..dba5f2a35 100644
      <li data-name="repos" class="b3-list-item"><svg class="b3-list-item__graphic"><use xlink:href="#iconCloud"></use></svg><span class="b3-list-item__text">${window.siyuan.languages.cloud}</span></li>
      <li data-name="publish" class="b3-list-item"><svg class="b3-list-item__graphic"><use xlink:href="#iconLanguage"></use></svg><span class="b3-list-item__text">${window.siyuan.languages.publish}</span></li>
      <li data-name="about" class="b3-list-item"><svg class="b3-list-item__graphic"><use xlink:href="#iconInfo"></use></svg><span class="b3-list-item__text">${window.siyuan.languages.about}</span></li>
-diff --git a/app/src/layout/tabUtil.ts b/app/src/layout/tabUtil.ts
-index d956e9be8..4200f5638 100644
---- a/app/src/layout/tabUtil.ts
-+++ b/app/src/layout/tabUtil.ts
-@@ -257,9 +257,7 @@ export const copyTab = (app: App, tab: Tab) => {
-                     app,
-                     tab: newTab,
-                     blockId: tab.model.editor.protyle.block.id,
--                    rootId: tab.model.editor.protyle.block.rootID,
--                    // https://github.com/siyuan-note/siyuan/issues/12150
--                    action: tab.model.editor.protyle.block.action,
-+                    rootId: tab.model.editor.protyle.block.rootID
-                 });
-             } else if (tab.model instanceof Asset) {
-                 model = new Asset({
 diff --git a/app/src/mobile/menu/index.ts b/app/src/mobile/menu/index.ts
 index 0a9092e45..d962892ed 100644
 --- a/app/src/mobile/menu/index.ts
@@ -147,32 +108,6 @@ index 21b5e780c..58b5d5038 100644
                                  importKeyElement.parentElement.classList.add("fn__none");
                                  importKeyElement.parentElement.nextElementSibling.classList.remove("fn__none");
                                  passwordDialog.destroy();
-diff --git a/app/src/protyle/util/paste.ts b/app/src/protyle/util/paste.ts
-index dc6732127..84ed0c757 100644
---- a/app/src/protyle/util/paste.ts
-+++ b/app/src/protyle/util/paste.ts
-@@ -169,21 +169,8 @@ export const pasteAsPlainText = async (protyle: IProtyle) => {
-     if (localFiles.length === 0) {
-         // Inline-level elements support pasted as plain text https://github.com/siyuan-note/siyuan/issues/8010
-         navigator.clipboard.readText().then(textPlain => {
--            // 对一些内置需要解析的 HTML 标签进行内部转移 Improve sub/sup pasting as plain text https://github.com/siyuan-note/siyuan/issues/12155
--            textPlain = textPlain.replace(/<sub>/g, "__@sub@__").replace(/<\/sub>/g, "__@/sub@__");
--            textPlain = textPlain.replace(/<sup>/g, "__@sup@__").replace(/<\/sup>/g, "__@/sup@__");
--            textPlain = textPlain.replace(/<kbd>/g, "__@kbd@__").replace(/<\/kbd>/g, "__@/kbd@__");
--            textPlain = textPlain.replace(/<u>/g, "__@u@__").replace(/<\/u>/g, "__@/u@__");
--
-             // 对 HTML 标签进行内部转义，避免被 Lute 解析以后变为小写 https://github.com/siyuan-note/siyuan/issues/10620
-             textPlain = textPlain.replace(/</g, ";;;lt;;;").replace(/>/g, ";;;gt;;;");
--
--            // 反转义内置需要解析的 HTML 标签
--            textPlain = textPlain.replace(/__@sub@__/g, "<sub>").replace(/__@\/sub@__/g, "</sub>");
--            textPlain = textPlain.replace(/__@sup@__/g, "<sup>").replace(/__@\/sup@__/g, "</sup>");
--            textPlain = textPlain.replace(/__@kbd@__/g, "<kbd>").replace(/__@\/kbd@__/g, "</kbd>");
--            textPlain = textPlain.replace(/__@u@__/g, "<u>").replace(/__@\/u@__/g, "</u");
--
-             const content = protyle.lute.BlockDOM2EscapeMarkerContent(protyle.lute.Md2BlockDOM(textPlain));
-             // insertHTML 会进行内部反转义
-             insertHTML(content, protyle, false, false, true);
 diff --git a/app/src/sync/syncGuide.ts b/app/src/sync/syncGuide.ts
 index 29e9c42ae..a2c9d8fa0 100644
 --- a/app/src/sync/syncGuide.ts
@@ -222,42 +157,6 @@ index 6ba7848a6..8fd9433a3 100644
 -    return window.siyuan.user && (0 === window.siyuan.user.userSiYuanSubscriptionStatus || 1 === window.siyuan.user.userSiYuanOneTimePayStatus);
 +    return true;
  };
-diff --git a/kernel/api/repo.go b/kernel/api/repo.go
-index 15757f79b..93aaa85ac 100644
---- a/kernel/api/repo.go
-+++ b/kernel/api/repo.go
-@@ -350,17 +350,12 @@ func importRepoKey(c *gin.Context) {
- 	}
- 
- 	base64Key := arg["key"].(string)
--	retKey, err := model.ImportRepoKey(base64Key)
--	if nil != err {
-+	if err := model.ImportRepoKey(base64Key); nil != err {
- 		ret.Code = -1
- 		ret.Msg = fmt.Sprintf(model.Conf.Language(137), err)
- 		ret.Data = map[string]interface{}{"closeTimeout": 5000}
- 		return
- 	}
--
--	ret.Data = map[string]interface{}{
--		"key": retKey,
--	}
- }
- 
- func initRepoKeyFromPassphrase(c *gin.Context) {
-diff --git a/kernel/api/router.go b/kernel/api/router.go
-index 9e786324c..0957874d7 100644
---- a/kernel/api/router.go
-+++ b/kernel/api/router.go
-@@ -155,7 +155,7 @@ func ServeAPI(ginServer *gin.Engine) {
- 	ginServer.Handle("POST", "/api/search/updateEmbedBlock", model.CheckAuth, updateEmbedBlock)
- 	ginServer.Handle("POST", "/api/search/fullTextSearchBlock", model.CheckAuth, fullTextSearchBlock)
- 	ginServer.Handle("POST", "/api/search/searchAsset", model.CheckAuth, searchAsset)
--	ginServer.Handle("POST", "/api/search/findReplace", model.CheckAuth, model.CheckAdminRole, model.CheckReadonly, findReplace)
-+	ginServer.Handle("POST", "/api/search/findReplace", model.CheckAuth, findReplace)
- 	ginServer.Handle("POST", "/api/search/fullTextSearchAssetContent", model.CheckAuth, fullTextSearchAssetContent)
- 	ginServer.Handle("POST", "/api/search/getAssetContent", model.CheckAuth, getAssetContent)
- 	ginServer.Handle("POST", "/api/search/listInvalidBlockRefs", model.CheckAuth, listInvalidBlockRefs)
 diff --git a/kernel/api/system.go b/kernel/api/system.go
 index 312bcbea5..4ab6c39cf 100644
 --- a/kernel/api/system.go
@@ -290,37 +189,6 @@ index 312bcbea5..4ab6c39cf 100644
  }
  
  func exportLog(c *gin.Context) {
-diff --git a/kernel/filesys/json_parser.go b/kernel/filesys/json_parser.go
-index cdf755331..fdad62613 100644
---- a/kernel/filesys/json_parser.go
-+++ b/kernel/filesys/json_parser.go
-@@ -183,13 +183,6 @@ func fixLegacyData(tip, node *ast.Node, idMap *map[string]bool, needFix, needMig
- 			node.SetIALAttr("id", node.ID)
- 			*needFix = true
- 		}
--
--		if node.ID != node.IALAttr("id") {
--			//某些情况下会导致 ID 和属性 id 不相同 https://ld246.com/article/1722826829447
--			node.SetIALAttr("id", node.ID)
--			*needFix = true
--		}
--
- 		if 0 < len(node.Children) && ast.NodeBr.String() == node.Children[len(node.Children)-1].TypeStr {
- 			// 剔除块尾多余的软换行 https://github.com/siyuan-note/siyuan/issues/6191
- 			node.Children = node.Children[:len(node.Children)-1]
-diff --git a/kernel/model/blockinfo.go b/kernel/model/blockinfo.go
-index c0bee39fb..6ee03a32d 100644
---- a/kernel/model/blockinfo.go
-+++ b/kernel/model/blockinfo.go
-@@ -131,7 +131,7 @@ func GetBlockRefText(id string) string {
- 
- 	tree, err := LoadTreeByBlockID(id)
- 	if nil != err {
--		return ""
-+		return ErrTreeNotFound.Error()
- 	}
- 
- 	node := treenode.GetNodeInTree(tree, id)
 diff --git a/kernel/model/conf.go b/kernel/model/conf.go
 index e4e101501..64183ffc3 100644
 --- a/kernel/model/conf.go
@@ -349,185 +217,6 @@ index e4e101501..64183ffc3 100644
  }
  
  const (
-diff --git a/kernel/model/file.go b/kernel/model/file.go
-index 7f3166197..68d3a6dde 100644
---- a/kernel/model/file.go
-+++ b/kernel/model/file.go
-@@ -1093,30 +1093,24 @@ func DuplicateDoc(tree *parse.Tree) {
- 	msgId := util.PushMsg(Conf.Language(116), 30000)
- 	defer util.PushClearMsg(msgId)
- 
-+	previousID := tree.Root.ID
- 	resetTree(tree, "Duplicated", false)
- 	createTreeTx(tree)
- 	WaitForWritingFiles()
- 
- 	// 复制为副本时将该副本块插入到数据库中 https://github.com/siyuan-note/siyuan/issues/11959
--	ast.Walk(tree.Root, func(n *ast.Node, entering bool) ast.WalkStatus {
--		if !entering || !n.IsBlock() {
--			return ast.WalkContinue
-+	avs := tree.Root.IALAttr(av.NodeAttrNameAvs)
-+	for _, avID := range strings.Split(avs, ",") {
-+		if !ast.IsNodeIDPattern(avID) {
-+			continue
- 		}
- 
--		avs := n.IALAttr(av.NodeAttrNameAvs)
--		for _, avID := range strings.Split(avs, ",") {
--			if !ast.IsNodeIDPattern(avID) {
--				continue
--			}
--
--			AddAttributeViewBlock(nil, []map[string]interface{}{{
--				"id":         n.ID,
--				"isDetached": false,
--			}}, avID, "", "", false)
--			util.PushReloadAttrView(avID)
--		}
--		return ast.WalkContinue
--	})
-+		AddAttributeViewBlock(nil, []map[string]interface{}{{
-+			"id":         tree.Root.ID,
-+			"isDetached": false,
-+		}}, avID, "", previousID, false)
-+		util.PushReloadAttrView(avID)
-+	}
- 	return
- }
- 
-diff --git a/kernel/model/transaction.go b/kernel/model/transaction.go
-index e55f412cb..a15060e32 100644
---- a/kernel/model/transaction.go
-+++ b/kernel/model/transaction.go
-@@ -772,53 +772,53 @@ func (tx *Transaction) doDelete(operation *Operation) (ret *TxErr) {
- 		return
- 	}
- 
--	syncDelete2AttributeView(node)
--	syncDelete2Block(node)
-+	go func() {
-+		time.Sleep(50 * time.Millisecond)
-+		WaitForWritingFiles()
-+		syncDelete2AttributeView(node)
-+		syncDelete2Block(node)
-+	}()
- 	return
- }
- 
- func syncDelete2Block(node *ast.Node) {
- 	var changedAvIDs []string
- 	ast.Walk(node, func(n *ast.Node, entering bool) ast.WalkStatus {
--		if !entering || ast.NodeAttributeView != n.Type {
-+		if !entering {
- 			return ast.WalkContinue
- 		}
- 
--		avID := n.AttributeViewID
--		isMirror := av.IsMirror(avID)
--		if changed := av.RemoveBlockRel(avID, n.ID, treenode.ExistBlockTree); changed {
--			changedAvIDs = append(changedAvIDs, avID)
--		}
--
--		if isMirror {
--			// 删除镜像数据库节点后不需要解绑块，因为其他镜像节点还在使用
--			return ast.WalkContinue
--		}
-+		if ast.NodeAttributeView == n.Type {
-+			avID := n.AttributeViewID
-+			if changed := av.RemoveBlockRel(avID, n.ID, treenode.ExistBlockTree); changed {
-+				changedAvIDs = append(changedAvIDs, avID)
-+			}
- 
--		attrView, err := av.ParseAttributeView(avID)
--		if nil != err {
--			return ast.WalkContinue
--		}
-+			attrView, err := av.ParseAttributeView(avID)
-+			if nil != err {
-+				return ast.WalkContinue
-+			}
- 
--		trees, nodes := getAttrViewBoundNodes(attrView)
--		for _, toChangNode := range nodes {
--			avs := toChangNode.IALAttr(av.NodeAttrNameAvs)
--			if "" != avs {
--				avIDs := strings.Split(avs, ",")
--				avIDs = gulu.Str.RemoveElem(avIDs, avID)
--				if 1 > len(avIDs) {
--					toChangNode.RemoveIALAttr(av.NodeAttrNameAvs)
--				} else {
--					toChangNode.SetIALAttr(av.NodeAttrNameAvs, strings.Join(avIDs, ","))
-+			trees, nodes := getAttrViewBoundNodes(attrView)
-+			for _, toChangNode := range nodes {
-+				avs := toChangNode.IALAttr(av.NodeAttrNameAvs)
-+				if "" != avs {
-+					avIDs := strings.Split(avs, ",")
-+					avIDs = gulu.Str.RemoveElem(avIDs, avID)
-+					if 1 > len(avIDs) {
-+						toChangNode.RemoveIALAttr(av.NodeAttrNameAvs)
-+					} else {
-+						toChangNode.SetIALAttr(av.NodeAttrNameAvs, strings.Join(avIDs, ","))
-+					}
- 				}
-+				avNames := getAvNames(toChangNode.IALAttr(av.NodeAttrNameAvs))
-+				oldAttrs := parse.IAL2Map(toChangNode.KramdownIAL)
-+				toChangNode.SetIALAttr(av.NodeAttrViewNames, avNames)
-+				pushBroadcastAttrTransactions(oldAttrs, toChangNode)
-+			}
-+			for _, tree := range trees {
-+				indexWriteTreeUpsertQueue(tree)
- 			}
--			avNames := getAvNames(toChangNode.IALAttr(av.NodeAttrNameAvs))
--			oldAttrs := parse.IAL2Map(toChangNode.KramdownIAL)
--			toChangNode.SetIALAttr(av.NodeAttrViewNames, avNames)
--			pushBroadcastAttrTransactions(oldAttrs, toChangNode)
--		}
--		for _, tree := range trees {
--			indexWriteTreeUpsertQueue(tree)
- 		}
- 		return ast.WalkContinue
- 	})
-@@ -1051,6 +1051,11 @@ func (tx *Transaction) doUpdate(operation *Operation) (ret *TxErr) {
- 	id := operation.ID
- 	tree, err := tx.loadTree(id)
- 	if nil != err {
-+		if errors.Is(err, ErrBlockNotFound) {
-+			logging.LogWarnf("not found block [%s]", id)
-+			return
-+		}
-+
- 		logging.LogErrorf("load tree [%s] failed: %s", id, err)
- 		return &TxErr{code: TxErrCodeBlockNotFound, id: id}
- 	}
-@@ -1248,27 +1253,13 @@ func refreshUpdated(node *ast.Node) {
- }
- 
- func createdUpdated(node *ast.Node) {
--	// 补全子节点的更新时间 Improve block update time filling https://github.com/siyuan-note/siyuan/issues/12182
--	ast.Walk(node, func(n *ast.Node, entering bool) ast.WalkStatus {
--		if !entering || !n.IsBlock() || ast.NodeKramdownBlockIAL == n.Type {
--			return ast.WalkContinue
--		}
--
--		updated := n.IALAttr("updated")
--		if "" == updated && ast.IsNodeIDPattern(n.ID) {
--			created := util.TimeFromID(n.ID)
--			n.SetIALAttr("updated", created)
--		}
--		return ast.WalkContinue
--	})
--
- 	created := util.TimeFromID(node.ID)
- 	updated := node.IALAttr("updated")
- 	if "" == updated {
- 		updated = created
- 	}
- 	if updated < created {
--		updated = created
-+		updated = created // 复制粘贴块后创建时间小于更新时间 https://github.com/siyuan-note/siyuan/issues/3624
- 	}
- 	parents := treenode.ParentNodesWithHeadings(node)
- 	for _, parent := range parents { // 更新所有父节点的更新时间字段
 diff --git a/kernel/model/updater.go b/kernel/model/updater.go
 index dd1c3af48..0d3be3b18 100644
 --- a/kernel/model/updater.go
@@ -625,57 +314,6 @@ index dd1c3af48..0d3be3b18 100644
  }
  
  func ver2num(a string) int {
-diff --git a/kernel/sql/block.go b/kernel/sql/block.go
-index 93b32d64e..9266d82f0 100644
---- a/kernel/sql/block.go
-+++ b/kernel/sql/block.go
-@@ -24,6 +24,7 @@ import (
- 	"github.com/88250/gulu"
- 	"github.com/88250/lute/ast"
- 	"github.com/88250/lute/html"
-+	"github.com/88250/lute/lex"
- 	"github.com/siyuan-note/siyuan/kernel/av"
- 	"github.com/siyuan-note/siyuan/kernel/cache"
- 	"github.com/siyuan-note/siyuan/kernel/filesys"
-@@ -260,6 +261,8 @@ func nodeStaticContent(node *ast.Node, excludeTypes []string, includeTextMarkATi
- 					buf.WriteString(" " + html.UnescapeHTMLStr(n.TextMarkAHref))
- 				}
- 			}
-+		case ast.NodeBackslash:
-+			buf.WriteByte(lex.ItemBackslash)
- 		case ast.NodeBackslashContent:
- 			buf.Write(n.Tokens)
- 		case ast.NodeAudio, ast.NodeVideo:
-diff --git a/kernel/sql/queue.go b/kernel/sql/queue.go
-index 27d544798..2ba884896 100644
---- a/kernel/sql/queue.go
-+++ b/kernel/sql/queue.go
-@@ -61,7 +61,7 @@ func FlushTxJob() {
- func WaitForWritingDatabase() {
- 	var printLog bool
- 	var lastPrintLog bool
--	for i := 0; isWritingDatabase(util.SQLFlushInterval + 50*time.Millisecond); i++ {
-+	for i := 0; isWritingDatabase(); i++ {
- 		time.Sleep(50 * time.Millisecond)
- 		if 200 < i && !printLog { // 10s 后打日志
- 			logging.LogWarnf("database is writing: \n%s", logging.ShortStack())
-@@ -74,14 +74,8 @@ func WaitForWritingDatabase() {
- 	}
- }
- 
--func WaitForWritingDatabaseIn(duration time.Duration) {
--	for i := 0; isWritingDatabase(duration); i++ {
--		time.Sleep(50 * time.Millisecond)
--	}
--}
--
--func isWritingDatabase(d time.Duration) bool {
--	time.Sleep(d)
-+func isWritingDatabase() bool {
-+	time.Sleep(util.SQLFlushInterval + 50*time.Millisecond)
- 	dbQueueLock.Lock()
- 	defer dbQueueLock.Unlock()
- 	if 0 < len(operationQueue) || isWriting {
 -- 
 2.37.1.windows.1
 
